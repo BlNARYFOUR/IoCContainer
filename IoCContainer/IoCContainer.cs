@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using System.Reflection;
 
 namespace IoCContainer;
 
@@ -21,31 +22,73 @@ public class IoCContainer
 
     public Type GetRegisteredService<TService>()
     {
-        if (!_registeredServices.ContainsKey(typeof(TService)))
+        return GetRegisteredService<TService>(typeof(TService));
+    }
+
+    public Type GetRegisteredService<TService>(Type service)
+    {
+        if (!_registeredServices.ContainsKey(service))
         {
             throw new NullReferenceException($"Cannot resolve type {typeof(TService)}.");
         }
 
-        return _registeredServices[typeof(TService)];
+        return _registeredServices[service];
     }
 
-    public TService Resolve<TService>()
-        where TService : class
+    public TService Resolve<TService>() where TService : class
     {
-        return CreateServiceConstructor<TService>(
-            GetRegisteredService<TService>()
-        )();
+        return Resolve<TService>(typeof(TService));
     }
 
-    private static Func<TService> CreateServiceConstructor<TService>(Type type)
+    public TService Resolve<TService>(Type service) where TService : class
     {
-        var constructorInfo = type.GetConstructor(Type.EmptyTypes);
+        Type type = GetRegisteredService<TService>(service);
+
+        var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
+        ConstructorInfo? constructorInfo = null;
+
+        foreach (var c in constructors)
+        {
+            constructorInfo = c;
+            break;
+        }
 
         if (null == constructorInfo)
         {
-            throw new NullReferenceException($"Type '{type}' has no empty constructor");
+            throw new NullReferenceException($"Type '{type}' has no public empty constructor.");
         }
 
-        return Expression.Lambda<Func<TService>>(Expression.New(constructorInfo)).Compile();
+        var parameters = new List<(string?, object)>();
+        foreach (var paramInfo in constructorInfo.GetParameters())
+        {
+            parameters.Add((paramInfo.Name, Resolve<object>(paramInfo.ParameterType)));
+        }
+
+        return CreateService<TService>(constructorInfo, parameters);
+    }
+
+    private static TService CreateService<TService>(ConstructorInfo constructorInfo, List<(string?, object)> parameters)
+    {
+        var lamdaParameterExpressions = parameters.Select((param, index) => Expression.Parameter(param.Item2.GetType(), param.Item1));
+        var constructorParameterExpressions =
+            lamdaParameterExpressions
+                .Take(parameters.Count)
+                .ToArray();
+
+        var expression = DynamicExpression.Lambda(
+            DynamicExpression.New(constructorInfo, constructorParameterExpressions),
+            lamdaParameterExpressions
+        ).Compile();
+
+        // todo fix constructor with params
+
+        var obj = expression.DynamicInvoke([.. parameters]);
+
+        if (null == obj)
+        {
+            throw new NullReferenceException($"Could not construct object of type '{typeof(TService)}'.");
+        }
+
+        return (TService) obj;
     }
 }

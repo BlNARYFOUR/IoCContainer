@@ -17,6 +17,7 @@ public class IoCContainerTest
         _container.RegisterService<IInterfacedService, InterfacedService>();
         _container.RegisterService<BBaseClassedService, BaseClassedService>();
         _container.RegisterService<AAbstractedService, AbstractedService>();
+        _container.RegisterService<CtorParamsServiceOne>();
     }
 
     [Fact]
@@ -80,6 +81,15 @@ public class IoCContainerTest
         var result = _container.Resolve<BBaseClassedService>();
 
         Assert.IsType<BaseClassedService>(result);
+        Assert.Equal(1, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCanResolveAServiceWithDependenciesTest()
+    {
+        var result = _container.Resolve<CtorParamsServiceOne>();
+
+        Assert.IsType<CtorParamsServiceOne>(result);
         Assert.Equal(1, result.GetInt());
     }
 }
