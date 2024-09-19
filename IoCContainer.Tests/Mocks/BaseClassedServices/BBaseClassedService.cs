@@ -1,4 +1,4 @@
-﻿namespace IoCContainer.Tests.Mocks.BaseClassedService;
+﻿namespace IoCContainer.Tests.Mocks.BaseClassedServices;
 
 internal class BBaseClassedService
 {

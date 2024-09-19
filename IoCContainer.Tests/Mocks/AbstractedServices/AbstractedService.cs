@@ -1,4 +1,4 @@
-﻿namespace IoCContainer.Tests.Mocks.AbstractedService;
+﻿namespace IoCContainer.Tests.Mocks.AbstractedServices;
 
 internal class AbstractedService : AAbstractedService
 {

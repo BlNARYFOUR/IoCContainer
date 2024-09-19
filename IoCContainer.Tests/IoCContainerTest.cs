@@ -1,7 +1,9 @@
-using IoCContainer.Tests.Mocks.AbstractedService;
-using IoCContainer.Tests.Mocks.BaseClassedService;
-using IoCContainer.Tests.Mocks.InterfacedService;
-using IoCContainer.Tests.Mocks.Service;
+using IoCContainer.Tests.Mocks.AbstractedServices;
+using IoCContainer.Tests.Mocks.BaseClassedServices;
+using IoCContainer.Tests.Mocks.CtorParamsServices;
+using IoCContainer.Tests.Mocks.InterfacedServices;
+using IoCContainer.Tests.Mocks.MultipleCtorServices;
+using IoCContainer.Tests.Mocks.Services;
 
 namespace IoCContainer.Tests;
 
@@ -18,6 +20,15 @@ public class IoCContainerTest
         _container.RegisterService<BBaseClassedService, BaseClassedService>();
         _container.RegisterService<AAbstractedService, AbstractedService>();
         _container.RegisterService<CtorParamsServiceOne>();
+        _container.RegisterService<ICtorParamsServiceTwo, CtorParamsServiceTwo>();
+        _container.RegisterService<CtorParamsServiceThree>();
+        _container.RegisterService<MultipleCtorServiceOne>();
+        _container.RegisterService<MultipleCtorServiceTwo>();
+        _container.RegisterService<MultipleCtorServiceThree>();
+        _container.RegisterService<MultipleCtorServiceUnresolvable>();
+        _container.RegisterService<MultipleCtorServiceUnresolvableTwo>();
+        _container.RegisterService<MultipleCtorServiceUnresolvableThree>();
+        _container.RegisterService<MultipleCtorServiceUnresolvableFour>();
     }
 
     [Fact]
@@ -46,6 +57,16 @@ public class IoCContainerTest
     {
         Type service = _container.GetRegisteredService<AAbstractedService>();
         Assert.Equal(typeof(AbstractedService), service);
+    }
+
+    [Fact]
+    public void ItCannotResolveAnUnregisteredServiceTest()
+    {
+        var exception = Assert.ThrowsAny<Exception>(() => {
+            _container.Resolve<UnresolvedService>();
+        });
+
+        Assert.Equal($"Cannot resolve type '{typeof(UnresolvedService)}'. Did you forget to register it?", exception.Message);
     }
 
     [Fact]
@@ -91,5 +112,61 @@ public class IoCContainerTest
 
         Assert.IsType<CtorParamsServiceOne>(result);
         Assert.Equal(2, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCanResolveAServiceWithNestedDependenciesTest()
+    {
+        var result = _container.Resolve<CtorParamsServiceThree>();
+
+        Assert.IsType<CtorParamsServiceThree>(result);
+        Assert.Equal(6, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCanResolveAServiceWithMultipleConstructorsTest()
+    {
+        var result = _container.Resolve<MultipleCtorServiceOne>();
+
+        Assert.IsType<MultipleCtorServiceOne>(result);
+        Assert.Equal(2, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCanResolveNestedServicesWithMultipleConstructorsTest()
+    {
+        var result = _container.Resolve<MultipleCtorServiceTwo>();
+
+        Assert.IsType<MultipleCtorServiceTwo>(result);
+        Assert.Equal(4, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCanResolveMultiNestedServicesWithMultipleConstructorsTest()
+    {
+        var result = _container.Resolve<MultipleCtorServiceThree>();
+
+        Assert.IsType<MultipleCtorServiceThree>(result);
+        Assert.Equal(5, result.GetInt());
+    }
+
+    [Fact]
+    public void ItCannotResolveAServiceWithADependencyOnAServiceWithoutSomeRegisteredServicesConstructorTest()
+    {
+        var exception = Assert.ThrowsAny<Exception>(() => {
+            _container.Resolve<MultipleCtorServiceUnresolvableTwo>();
+        });
+
+        Assert.Equal($"Cannot resolve type '{typeof(UnresolvedService)}'. Did you forget to register it?", exception.Message);
+    }
+
+    [Fact]
+    public void ItCannotResolveAServiceWithADependencyOnAServiceWithoutAnyRegisteredServicesConstructorTest()
+    {
+        var exception = Assert.ThrowsAny<Exception>(() => {
+            _container.Resolve<MultipleCtorServiceUnresolvableFour>();
+        });
+
+        Assert.Equal($"Type '{typeof(MultipleCtorServiceUnresolvableThree)}' has no public constructor that can be resolved. Did you forget to register any of its dependencies?", exception.Message);
     }
 }

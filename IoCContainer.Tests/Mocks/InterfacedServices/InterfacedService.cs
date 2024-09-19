@@ -1,4 +1,4 @@
-﻿namespace IoCContainer.Tests.Mocks.InterfacedService;
+﻿namespace IoCContainer.Tests.Mocks.InterfacedServices;
 
 internal class InterfacedService : IInterfacedService
 {
