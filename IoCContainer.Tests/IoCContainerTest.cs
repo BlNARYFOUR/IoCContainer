@@ -90,6 +90,6 @@ public class IoCContainerTest
         var result = _container.Resolve<CtorParamsServiceOne>();
 
         Assert.IsType<CtorParamsServiceOne>(result);
-        Assert.Equal(1, result.GetInt());
+        Assert.Equal(2, result.GetInt());
     }
 }

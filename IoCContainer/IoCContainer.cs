@@ -44,51 +44,29 @@ public class IoCContainer
     {
         Type type = GetRegisteredService<TService>(service);
 
-        var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
-        ConstructorInfo? constructorInfo = null;
+        var ctors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
+        ConstructorInfo? chosenCtor = null;
 
-        foreach (var c in constructors)
+        foreach (var ctor in ctors)
         {
-            constructorInfo = c;
+            chosenCtor = ctor;
             break;
         }
 
-        if (null == constructorInfo)
+        if (null == chosenCtor)
         {
-            throw new NullReferenceException($"Type '{type}' has no public empty constructor.");
+            throw new NullReferenceException($"Type '{type}' has no public constructor that can be resolved.");
         }
 
-        var parameters = new List<(string?, object)>();
-        foreach (var paramInfo in constructorInfo.GetParameters())
+        var parameters = new List<object>();
+
+        foreach (var paramInfo in chosenCtor.GetParameters())
         {
-            parameters.Add((paramInfo.Name, Resolve<object>(paramInfo.ParameterType)));
+            parameters.Add(
+                Resolve<object>(paramInfo.ParameterType)
+            );
         }
 
-        return CreateService<TService>(constructorInfo, parameters);
-    }
-
-    private static TService CreateService<TService>(ConstructorInfo constructorInfo, List<(string?, object)> parameters)
-    {
-        var lamdaParameterExpressions = parameters.Select((param, index) => Expression.Parameter(param.Item2.GetType(), param.Item1));
-        var constructorParameterExpressions =
-            lamdaParameterExpressions
-                .Take(parameters.Count)
-                .ToArray();
-
-        var expression = DynamicExpression.Lambda(
-            DynamicExpression.New(constructorInfo, constructorParameterExpressions),
-            lamdaParameterExpressions
-        ).Compile();
-
-        // todo fix constructor with params
-
-        var obj = expression.DynamicInvoke([.. parameters]);
-
-        if (null == obj)
-        {
-            throw new NullReferenceException($"Could not construct object of type '{typeof(TService)}'.");
-        }
-
-        return (TService) obj;
+        return (TService) chosenCtor.Invoke([.. parameters]);
     }
 }
