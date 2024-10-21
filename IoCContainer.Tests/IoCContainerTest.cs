@@ -38,28 +38,28 @@ public class IoCContainerTest
     [Fact]
     public void ItCanGetARegisteredServiceTest()
     {
-        Type service = _container.GetRegisteredService<Service>();
+        Type service = _container.GetRegisteredServices<Service>();
         Assert.Equal(typeof(Service), service);
     }
 
     [Fact]
     public void ItCanGetARegisteredInterfacedServiceTest()
     {
-        Type service = _container.GetRegisteredService<Service>();
+        Type service = _container.GetRegisteredServices<Service>();
         Assert.Equal(typeof(Service), service);
     }
 
     [Fact]
     public void ItCanGetARegisteredBaseClassedServiceTest()
     {
-        Type service = _container.GetRegisteredService<BBaseClassedService>();
+        Type service = _container.GetRegisteredServices<BBaseClassedService>();
         Assert.Equal(typeof(BaseClassedService), service);
     }
 
     [Fact]
     public void ItCanGetARegisteredAbstractedServiceTest()
     {
-        Type service = _container.GetRegisteredService<AAbstractedService>();
+        Type service = _container.GetRegisteredServices<AAbstractedService>();
         Assert.Equal(typeof(AbstractedService), service);
     }
 

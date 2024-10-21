@@ -1,45 +1,52 @@
-﻿using System.Linq.Expressions;
+﻿using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace IoCContainer;
 
 public class IoCContainer
 {
-    private readonly Dictionary<Type, Type> _registeredServices = [];
+    private readonly Dictionary<Type, List<Type>> _registeredServices = [];
 
     public void RegisterService<TService, TImplementation>()
         where TService : class
         where TImplementation : class, TService
     {
+        // todo
+
         _registeredServices.Add(
             typeof(TService),
-            typeof(TImplementation)
+            [typeof(TImplementation)]
         );
     }
 
     public void RegisterService<TService>()
         where TService : class
     {
+        // todo
+
         _registeredServices.Add(
             typeof(TService),
-            typeof(TService)
+            [typeof(TService)]
         );
     }
 
-    public Type GetRegisteredService<TService>()
+    // todo: add register for List type
+
+    public List<Type> GetRegisteredServices<TService>()
         where TService : class
     {
-        return GetRegisteredService(typeof(TService));
+        return GetRegisteredServices(typeof(TService));
     }
 
-    public Type GetRegisteredService(Type serviceType)
+    public List<Type> GetRegisteredServices(Type serviceType)
     {
-        if (!_registeredServices.TryGetValue(serviceType, out Type? implementationType))
+        if (!_registeredServices.TryGetValue(serviceType, out List<Type>? implementationTypes) || 0 == implementationTypes.Count)
         {
             throw new NullReferenceException($"Cannot resolve type '{serviceType}'. Did you forget to register it?");
         }
 
-        return implementationType;
+        return implementationTypes;
     }
 
     public TService Resolve<TService>(Type? serviceType = null)
@@ -57,18 +64,28 @@ public class IoCContainer
     private ConstructorInfo FindConstructorWithFirstOccuringEmptyChildConstructor<TService>(Type? serviceType = null)
         where TService : class
     {
-        var implementationType = GetRegisteredService(serviceType ?? typeof(TService));
-        var ctors = implementationType.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
+        var implementationTypes = GetRegisteredServices(serviceType ?? typeof(TService));
+
+        var ctors = new List<ConstructorInfo>();
+        var ctorsToSearch = new List<CtorNestedInfo>();
         ConstructorInfo? chosenCtor = null;
 
-        List<CtorNestedInfo> ctorsToSearch = ctors.Select(ctor => new CtorNestedInfo(
-            ctor,
-            ctor.GetParameters(),
-            ctor.GetParameters().Length,
-            implementationType
-        )).ToList();
+        implementationTypes.ForEach(implementationType => {
+            ctors.AddRange(implementationType.GetConstructors(BindingFlags.Instance | BindingFlags.Public));
 
-        Type typeOfLastParam = implementationType;
+            ctorsToSearch.AddRange(
+                ctors.Select(
+                    ctor => new CtorNestedInfo(
+                        ctor,
+                        ctor.GetParameters(),
+                        ctor.GetParameters().Length,
+                        implementationType
+                    )
+                )
+            );
+        });
+
+        Type typeOfLastParam = implementationTypes.ElementAt(0);
 
         do
         {
@@ -94,7 +111,7 @@ public class IoCContainer
                 {
                     try
                     {
-                        var paramImplementationType = GetRegisteredService(paramToSearch.ParameterType);
+                        var paramImplementationType = GetRegisteredServices(paramToSearch.ParameterType);
                         var paramCtors = paramImplementationType.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
                         var referenceChain = new Dictionary<Type, bool>(ctorToSearch.ReferenceChain) {
                             { ctorToSearch.ReturnType, true },
