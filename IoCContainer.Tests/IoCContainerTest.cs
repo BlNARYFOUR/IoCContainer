@@ -1,5 +1,6 @@
 using IoCContainer.Tests.Mocks.AbstractedServices;
 using IoCContainer.Tests.Mocks.BaseClassedServices;
+using IoCContainer.Tests.Mocks.CircularReferenceServices;
 using IoCContainer.Tests.Mocks.CtorParamsServices;
 using IoCContainer.Tests.Mocks.InterfacedServices;
 using IoCContainer.Tests.Mocks.MultipleCtorServices;
@@ -29,6 +30,9 @@ public class IoCContainerTest
         _container.RegisterService<MultipleCtorServiceUnresolvableTwo>();
         _container.RegisterService<MultipleCtorServiceUnresolvableThree>();
         _container.RegisterService<MultipleCtorServiceUnresolvableFour>();
+        _container.RegisterService<CircularReferenceServiceOne>();
+        _container.RegisterService<CircularReferenceServiceTwo>();
+        _container.RegisterService<CircularReferenceServiceThree>();
     }
 
     [Fact]
@@ -168,5 +172,15 @@ public class IoCContainerTest
         });
 
         Assert.Equal($"Type '{typeof(MultipleCtorServiceUnresolvableThree)}' has no public constructor that can be resolved. Did you forget to register any of its dependencies?", exception.Message);
+    }
+
+    [Fact]
+    public void ItCannotResolveAServiceWithACircularReferenceTest()
+    {
+        var exception = Assert.ThrowsAny<Exception>(() => {
+            _container.Resolve<CircularReferenceServiceThree>();
+        });
+
+        Assert.Equal($"Circular reference found to type '{typeof(CircularReferenceServiceThree)}'. In class: '{typeof(CircularReferenceServiceOne)}'.", exception.Message);
     }
 }

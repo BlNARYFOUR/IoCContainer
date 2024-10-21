@@ -29,11 +29,10 @@ public class IoCContainer
     public Type GetRegisteredService<TService>()
         where TService : class
     {
-        return GetRegisteredService<TService>(typeof(TService));
+        return GetRegisteredService(typeof(TService));
     }
 
-    public Type GetRegisteredService<TService>(Type serviceType)
-        where TService : class
+    public Type GetRegisteredService(Type serviceType)
     {
         if (!_registeredServices.TryGetValue(serviceType, out Type? implementationType))
         {
@@ -58,7 +57,7 @@ public class IoCContainer
     private ConstructorInfo FindConstructorWithFirstOccuringEmptyChildConstructor<TService>(Type? serviceType = null)
         where TService : class
     {
-        var implementationType = GetRegisteredService<TService>(serviceType ?? typeof(TService));
+        var implementationType = GetRegisteredService(serviceType ?? typeof(TService));
         var ctors = implementationType.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
         ConstructorInfo? chosenCtor = null;
 
@@ -95,14 +94,23 @@ public class IoCContainer
                 {
                     try
                     {
-                        var paramImplementationType = GetRegisteredService<object>(paramToSearch.ParameterType);
+                        var paramImplementationType = GetRegisteredService(paramToSearch.ParameterType);
                         var paramCtors = paramImplementationType.GetConstructors(BindingFlags.Instance | BindingFlags.Public);
+                        var referenceChain = new Dictionary<Type, bool>(ctorToSearch.ReferenceChain) {
+                            { ctorToSearch.ReturnType, true },
+                        };
+
+                        if (referenceChain.ContainsKey(paramImplementationType))
+                        {
+                            throw new ArgumentException($"Circular reference found to type '{paramImplementationType}'. In class: '{ctorToSearch.ReturnType}'.");
+                        }
 
                         newCtorsToSearch.AddRange(paramCtors.Select(ctor => new CtorNestedInfo(
                             ctorToSearch.BaseCtor,
                             ctor.GetParameters(),
                             ctorToSearch.TotalRequiredResolves + ctor.GetParameters().Length,
-                            paramImplementationType
+                            paramImplementationType,
+                            referenceChain
                         )));
                     }
                     catch (NullReferenceException) {}
